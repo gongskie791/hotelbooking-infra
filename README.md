@@ -18,35 +18,37 @@ CloudWatch (container logs)
 - **Infrastructure as Code**: Terraform
 - **CI/CD**: Github Actions
 - **Cloud**: AWS
-  - EC2 -- runs the dcoker container
+  - EC2 -- runs the Docker container
   - ECR -- stores Docker images
-  - RDS -- PostgresSQL database
+  - RDS -- PostgreSQL database
   - ALB -- HTTPS load balancer
   - ACM -- SSL/TLS certificate
-  - ROUTE 53 -- DNS management
+  - Route 53 -- DNS management
   - Secrets Manager -- database credentials
   - CloudWatch -- container logs
+  - SSM Session Manager -- secure deployment without SSH
   - VPC -- isolated network
 
 ## Infrastructure Setup
 
-1. Run `terraform apply` to provision VPC, EC2, ECR, IAM, Secrets Manager, CloudWatch
-2. Create ACM certificate for the domain (DNS validate via Route 53)
-3. Create ALB with HTTPS listener and target group pointing to EC2 port 8080
-4. Create Route 53 A record aliasing the domain to the ALB
+1. Run `terraform apply` to provision all infrastructure
+2. Copy the nameservers from terraform output and update them in Porkbun
+3. Wait for ACM certificate to show Issued
+4. Trigger GitHub Actions to deploy the container
 
 ## CI/CD Pipeline
 
 On Every push to `main`
 
-1. Github Actions builds the Docker image
+1. GitHub Actions builds the Docker image
 2. Pushes the image to ECR
-3. SSHs into EC2 and pulls the latest image
-4. Runs the Container with the environment variables from Secrets Manger
+3. Deploys to EC2 via SSM Session Manager (no SSH required)
+4. Runs the container with environment variables from Secrets Manager
+5. Health check verifies the deployment succeeded
 
 ## HTTPS Flow
 
 - Route 53 resolves the domain to the ALB
 - ALB terminates SSL using an ACM certificate
-- ALB forwards plain http traffic to the EC2 on port 8080
+- ALB forwards plain HTTP traffic to the EC2 on port 8080
 - EC2 runs the Go app inside a Docker container
